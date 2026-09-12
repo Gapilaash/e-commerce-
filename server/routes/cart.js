@@ -22,6 +22,7 @@ async function buildCartResponse(cart) {
         name: product.name,
         image: product.image,
         price: product.price,
+        stock:product.stock,
         qty: i.qty
       };
     })
