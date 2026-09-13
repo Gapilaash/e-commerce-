@@ -12,6 +12,7 @@ export default function Login() {
       <SignIn
         routing="path"
         path="/login"
+        signUpUrl="/sign-up"
         afterSignInUrl="/"
         afterSignUpUrl="/"
         appearance={{
