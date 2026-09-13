@@ -10,8 +10,6 @@ export default function Login() {
   return (
     <div className="flex justify-center items-start py-12 px-4">
       <SignIn
-        routing="path"
-        path="/login"
         signUpUrl="/sign-up"
         afterSignInUrl="/"
         afterSignUpUrl="/"
