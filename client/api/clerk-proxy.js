@@ -47,14 +47,10 @@ export default async function handler(req, res) {
       if (req.body === undefined || req.body === null || req.body === '') {
         body = undefined;
       } else if (typeof req.body === 'string' || Buffer.isBuffer(req.body)) {
-        // Already raw (e.g. Vercel didn't parse it) — pass through as-is.
         body = req.body;
       } else if (originalContentType.includes('application/x-www-form-urlencoded')) {
-        // Vercel auto-parsed a urlencoded body into an object — rebuild the
-        // exact urlencoded string so Clerk's API can read it correctly.
         body = new URLSearchParams(req.body).toString();
       } else {
-        // Assume JSON for everything else.
         body = JSON.stringify(req.body);
         if (!headers.has('content-type')) {
           headers.set('content-type', 'application/json');
@@ -72,9 +68,17 @@ export default async function handler(req, res) {
     res.status(response.status);
     response.headers.forEach((value, key) => {
       const lower = key.toLowerCase();
-      if (['content-encoding', 'transfer-encoding', 'connection'].includes(lower)) return;
+      if (['content-encoding', 'transfer-encoding', 'connection', 'set-cookie'].includes(lower)) return;
       res.setHeader(key, value);
     });
+
+    // Set-Cookie needs special handling: fetch's Headers merges multiple
+    // Set-Cookie values into one comma-joined string, which breaks cookies.
+    // getSetCookie() returns them as a proper array instead.
+    if (typeof response.headers.getSetCookie === 'function') {
+      const cookies = response.headers.getSetCookie();
+      if (cookies.length) res.setHeader('set-cookie', cookies);
+    }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     res.send(buffer);
