@@ -26,7 +26,7 @@ export default function App() {
           <Route path="/login/*" element={<Login />} />
           <Route path="/sign-up/*" element={
             <div className="flex justify-center items-start py-12 px-4">
-              <SignUp routing="path" path="/sign-up" afterSignUpUrl="/" />
+              <SignUp routing="path" path="/sign-up" signInUrl="/login" afterSignUpUrl="/" />
             </div>
           } />
           <Route path="/order-success/:id" element={<OrderSuccess />} />
