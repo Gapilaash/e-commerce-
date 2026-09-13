@@ -40,13 +40,21 @@ export default async function handler(req, res) {
     const method = req.method || 'GET';
     const hasBody = !['GET', 'HEAD'].includes(method);
 
+    const originalContentType = (req.headers['content-type'] || '').toLowerCase();
+
     let body;
     if (hasBody) {
       if (req.body === undefined || req.body === null || req.body === '') {
         body = undefined;
       } else if (typeof req.body === 'string' || Buffer.isBuffer(req.body)) {
+        // Already raw (e.g. Vercel didn't parse it) — pass through as-is.
         body = req.body;
+      } else if (originalContentType.includes('application/x-www-form-urlencoded')) {
+        // Vercel auto-parsed a urlencoded body into an object — rebuild the
+        // exact urlencoded string so Clerk's API can read it correctly.
+        body = new URLSearchParams(req.body).toString();
       } else {
+        // Assume JSON for everything else.
         body = JSON.stringify(req.body);
         if (!headers.has('content-type')) {
           headers.set('content-type', 'application/json');
