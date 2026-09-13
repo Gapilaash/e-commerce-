@@ -1,9 +1,5 @@
-// This file must live at: client/api/__clerk/[...path].js
-//
-// It receives requests forwarded (via a vercel.json rewrite) from
-// https://e-commerce-client-tawny.vercel.app/__clerk/*
-// and proxies them to Clerk's real Frontend API, exactly as required by:
-// https://clerk.com/docs/guides/dashboard/dns-domains/proxy-fapi
+// This file must live at exactly: client/api/clerk-proxy.js
+// (plain filename, no brackets — avoids Windows rename issues)
 
 const CLERK_FAPI = 'https://frontend-api.clerk.dev';
 const PROXY_URL = 'https://e-commerce-client-tawny.vercel.app/__clerk';
@@ -16,12 +12,16 @@ export default async function handler(req, res) {
       return;
     }
 
-    // req.url looks like: /api/__clerk/v1/client?... — strip the prefix
-    // so we can rebuild the real Clerk Frontend API URL.
-    const suffix = req.url.replace(/^\/api\/__clerk/, '');
-    const targetUrl = CLERK_FAPI + suffix;
+    // The vercel.json rewrite passes the rest of the path as ?path=...
+    const suffix = req.query.path || '';
+    const suffixPath = Array.isArray(suffix) ? suffix.join('/') : suffix;
 
-    // Copy incoming headers, but drop the ones that must not be forwarded.
+    // Rebuild any other query params (excluding our own "path" param).
+    const otherParams = new URLSearchParams(req.query);
+    otherParams.delete('path');
+    const qs = otherParams.toString();
+    const targetUrl = `${CLERK_FAPI}/${suffixPath}${qs ? '?' + qs : ''}`;
+
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (!value) continue;
@@ -30,7 +30,6 @@ export default async function handler(req, res) {
       headers.set(key, Array.isArray(value) ? value.join(', ') : value);
     }
 
-    // Required by Clerk's proxy spec.
     headers.set('Clerk-Proxy-Url', PROXY_URL);
     headers.set('Clerk-Secret-Key', secretKey);
     headers.set(
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
     const method = req.method || 'GET';
     const hasBody = !['GET', 'HEAD'].includes(method);
 
-    // req.body is already parsed by Vercel for JSON/form requests.
     let body;
     if (hasBody) {
       if (req.body === undefined || req.body === null || req.body === '') {
@@ -60,7 +58,7 @@ export default async function handler(req, res) {
       method,
       headers,
       body,
-      redirect: 'manual' // Clerk requires redirects to pass through unchanged.
+      redirect: 'manual'
     });
 
     res.status(response.status);
