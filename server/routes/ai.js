@@ -13,6 +13,29 @@ function extractMaxPrice(text) {
   return match ? Number(match[2]) : null;
 }
 
+// Common shopping terms mapped to the actual words used in our catalog,
+// so a search for "headphones" also finds products listed as "earphones".
+const SYNONYMS = {
+  headphones: 'earphones',
+  headphone: 'earphones',
+  earbuds: 'earphones|airpodes',
+  earbud: 'earphones|airpodes',
+  fridge: 'refrigerator',
+  laptop: 'mobile|processor',
+  television: 'tv',
+  smartwatch: 'watches',
+  watch: 'watches'
+};
+
+function applySynonyms(text) {
+  let result = text;
+  for (const [term, replacement] of Object.entries(SYNONYMS)) {
+    const re = new RegExp(`\\b${term}\\b`, 'gi');
+    result = result.replace(re, replacement);
+  }
+  return result;
+}
+
 // GET /api/ai/recommendations
 // Simple "recommended for you" feed: top-rated products.
 router.get('/recommendations', auth, async (req, res) => {
@@ -36,7 +59,7 @@ router.post('/chat', auth, async (req, res) => {
     }
 
     const maxPrice = extractMaxPrice(message);
-    const cleaned = message.replace(PRICE_PATTERN, '').trim();
+    const cleaned = applySynonyms(message.replace(PRICE_PATTERN, '').trim());
 
     const filter = {};
     if (cleaned) {
