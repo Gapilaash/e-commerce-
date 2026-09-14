@@ -4,10 +4,13 @@ const Product = require('../models/Product');
 
 const router = express.Router();
 
-// Extracts a rough "under $X" price ceiling from free text, if present.
+// Extracts a rough "under X" price ceiling from free text, if present.
+// Supports $, Rs., Rs, and ₹ as optional currency markers.
+const PRICE_PATTERN = /(under|below)\s*(?:rs\.?|₹|\$)?\s*(\d+(?:\.\d+)?)/i;
+
 function extractMaxPrice(text) {
-  const match = text.match(/under\s*\$?(\d+(\.\d+)?)/i) || text.match(/below\s*\$?(\d+(\.\d+)?)/i);
-  return match ? Number(match[1]) : null;
+  const match = text.match(PRICE_PATTERN);
+  return match ? Number(match[2]) : null;
 }
 
 // GET /api/ai/recommendations
@@ -33,7 +36,7 @@ router.post('/chat', auth, async (req, res) => {
     }
 
     const maxPrice = extractMaxPrice(message);
-    const cleaned = message.replace(/under\s*\$?\d+(\.\d+)?/i, '').trim();
+    const cleaned = message.replace(PRICE_PATTERN, '').trim();
 
     const filter = {};
     if (cleaned) {
@@ -51,7 +54,7 @@ router.post('/chat', auth, async (req, res) => {
     if (products.length === 0) {
       reply = "I couldn't find anything matching that. Try a different keyword or category.";
     } else {
-      reply = `Here's what I found${maxPrice ? ` under $${maxPrice}` : ''}:`;
+      reply = `Here's what I found${maxPrice ? ` under Rs. ${maxPrice}` : ''}:`;
     }
 
     res.json({ reply, products });
