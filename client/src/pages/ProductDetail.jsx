@@ -119,14 +119,36 @@ export default function ProductDetail() {
 
           <div className="flex items-center gap-4 mb-6">
             <label className="text-sm text-muted">Quantity</label>
-            <input
-              type="number"
-              min="1"
-              max={product.stock}
-              value={qty}
-              onChange={e => setQty(Math.max(1, Number(e.target.value)))}
-              className="input w-20"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary w-8 h-8 p-0 flex items-center justify-center"
+                onClick={() => setQty(q => Math.max(1, q - 1))}
+              >
+                −
+              </button>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                max={product.stock}
+                value={qty}
+                onChange={e => {
+                  const v = e.target.value === '' ? '' : Number(e.target.value);
+                  if (v === '') { setQty(''); return; }
+                  setQty(Math.min(product.stock, Math.max(1, v)));
+                }}
+                onBlur={() => { if (qty === '' || qty < 1) setQty(1); }}
+                className="input w-16 text-center"
+              />
+              <button
+                type="button"
+                className="btn-secondary w-8 h-8 p-0 flex items-center justify-center"
+                onClick={() => setQty(q => Math.min(product.stock, (q || 0) + 1))}
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -206,4 +228,4 @@ export default function ProductDetail() {
       )}
     </div>
   );
-}
+         }
