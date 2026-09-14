@@ -22,9 +22,13 @@ const SYNONYMS = {
   earbud: 'earphones|airpodes',
   fridge: 'refrigerator',
   laptop: 'mobile|processor',
+  phone: 'mobile',
+  phones: 'mobile',
   television: 'tv',
   smartwatch: 'watches',
-  watch: 'watches'
+  smartwatches: 'watches',
+  watch: 'watches',
+  watches: 'watches'
 };
 
 function applySynonyms(text) {
@@ -34,6 +38,48 @@ function applySynonyms(text) {
     result = result.replace(re, replacement);
   }
   return result;
+}
+
+// Common conversational filler phrases people use, stripped before search
+// so "show me smart watches" becomes just "smart watches".
+const FILLER_PHRASES = [
+  'show me', 'i want', 'i need', 'looking for', 'find me', 'search for',
+  'give me', 'do you have', 'can i get', 'get me', 'i am looking for',
+  'please show', 'display', 'list'
+];
+
+// Words too generic to be useful as search terms on their own.
+const STOPWORDS = new Set([
+  'a', 'an', 'the', 'some', 'any', 'for', 'of', 'in', 'with', 'me', 'to',
+  'please', 'and', 'or', 'products', 'product', 'items', 'item'
+]);
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripFillers(text) {
+  let result = text;
+  for (const phrase of FILLER_PHRASES) {
+    const re = new RegExp(`\\b${phrase}\\b`, 'gi');
+    result = result.replace(re, ' ');
+  }
+  return result.replace(/\s+/g, ' ').trim();
+}
+
+// Builds a regex that matches ANY of the meaningful words in the message,
+// rather than requiring the whole phrase to appear literally.
+function buildKeywordRegex(text) {
+  const withSynonyms = applySynonyms(text);
+  const words = withSynonyms
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .flatMap(w => w.split('|')) // synonyms may already contain "a|b"
+    .map(w => w.trim())
+    .filter(w => w.length > 1 && !STOPWORDS.has(w));
+
+  if (words.length === 0) return null;
+  return words.map(escapeRegex).join('|');
 }
 
 // GET /api/ai/recommendations
@@ -59,14 +105,16 @@ router.post('/chat', auth, async (req, res) => {
     }
 
     const maxPrice = extractMaxPrice(message);
-    const cleaned = applySynonyms(message.replace(PRICE_PATTERN, '').trim());
+    const withoutPrice = message.replace(PRICE_PATTERN, '').trim();
+    const withoutFillers = stripFillers(withoutPrice);
+    const keywordRegex = buildKeywordRegex(withoutFillers);
 
     const filter = {};
-    if (cleaned) {
+    if (keywordRegex) {
       filter.$or = [
-        { name: { $regex: cleaned, $options: 'i' } },
-        { category: { $regex: cleaned, $options: 'i' } },
-        { description: { $regex: cleaned, $options: 'i' } }
+        { name: { $regex: keywordRegex, $options: 'i' } },
+        { category: { $regex: keywordRegex, $options: 'i' } },
+        { description: { $regex: keywordRegex, $options: 'i' } }
       ];
     }
     if (maxPrice) filter.price = { $lte: maxPrice };
