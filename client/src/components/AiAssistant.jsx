@@ -6,7 +6,7 @@ export default function AiAssistant() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [conversation, setConversation] = useState([
-    { role: 'assistant', text: "Hi! Ask me things like \"headphones under Rs. 100\" or \"show me home items\".", products: [] }
+    { role: 'assistant', text: "Hi! Ask me things like \"earphones under Rs. 10000\" or \"show me smart watches\".", products: [] }
   ]);
   const [loading, setLoading] = useState(false);
 
